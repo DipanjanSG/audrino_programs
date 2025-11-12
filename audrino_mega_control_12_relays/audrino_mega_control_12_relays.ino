@@ -1,4 +1,4 @@
-
+#include <Regexp.h>
 
 int pinNumber = 0;
 int onOrOffSignal = 0;
@@ -6,6 +6,9 @@ String command = "";
 char SEPARATOR_CHAR_IN_COMMAND = '-';
 int pinMap[13] = {0,2,3,4,5,6,7,8,9,10,11,12,13};
 int TOTAL_NUMBER_OF_RELAYS = 12;
+MatchState ms;
+const char *pattern = "([0-9]+)-([01])";
+char buf[10]; 
 
 
 void setup() {
@@ -29,17 +32,14 @@ void loop() {
 
     command = Serial.readStringUntil('\n');
     command.trim();
-    extractValuesFromCommand(command);
 
-    Serial.print(pinNumber);
-    Serial.print("-");
-    Serial.print(onOrOffSignal);
-    Serial.println();
-
+    extractValuesFromCommand();
 
     if(pinNumber > 0 && pinNumber <= TOTAL_NUMBER_OF_RELAYS )
     {
       digitalWrite(pinMap[pinNumber], onOrOffSignal);
+      sendStatusToConsole(String("turned relay ")+ pinNumber + " " + onOrOffSignal);
+
     }
     else
     {
@@ -51,6 +51,10 @@ void loop() {
 
 }
 
+void sendStatusToConsole(String msg)
+{
+  Serial.println(msg);
+}
 
 void setOrUnsetAllPins()
 {
@@ -62,9 +66,24 @@ void setOrUnsetAllPins()
 }
 
 
-void extractValuesFromCommand(String command)
+void extractValuesFromCommand()
 {
-  int indexOfSeparator = command.indexOf(SEPARATOR_CHAR_IN_COMMAND);
-  pinNumber = command.substring(0,indexOfSeparator).toInt();
-  onOrOffSignal = command.substring(indexOfSeparator+1).toInt() == 0 ? LOW: HIGH;
+
+  ms.Target(command.c_str());
+  int x =  ms.Match(pattern) ;
+  Serial.println(x);
+  if( ms.Match(pattern) > 0)
+  {
+       int indexOfSeparator = command.indexOf(SEPARATOR_CHAR_IN_COMMAND);
+       ms.GetCapture(buf, 1);
+       pinNumber = String(buf).toInt(); 
+       ms.GetCapture(buf, 2);
+       onOrOffSignal = String(buf).toInt()  == 0 ? LOW: HIGH;
+
+  } 
+  else{
+
+   sendStatusToConsole("ERROR: Input is wrong should be in format <pin number>-<0 or 1> ...Ex- 5-0 to turn relay 5 off 5-1 to turn relay 5 on ");
+  }
+ 
 }
